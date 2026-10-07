@@ -10,14 +10,26 @@ import org.lwjgl.glfw.GLFW;
 
 public class ExampleModClient implements ClientModInitializer {
 
+	private static KeyMapping PANEL_TUSU;
+
 	private static KeyMapping DONUSUM_TUSU;
 
-	@Override
+	public static boolean panelTusuEslesirMi(int keyCode, int scanCode) {
+		return PANEL_TUSU != null && PANEL_TUSU.matches(keyCode, scanCode);
+	}
+
+    @Override
 	public void onInitializeClient() {
 		DONUSUM_TUSU = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.wolfblood.transform",   // ayarlar menüsünde görünecek isim (dil dosyası olmadan kod olarak görünür)
 				InputConstants.Type.KEYSYM,
 				GLFW.GLFW_KEY_G,             // varsayılan tuş: G (istersen değiştir)
+				"category.wolfblood"          // hangi kategori altında görünsün
+		));
+		PANEL_TUSU = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+				"key.wolfblood.panel",   // ayarlar menüsünde görünecek isim (dil dosyası olmadan kod olarak görünür)
+				InputConstants.Type.KEYSYM,
+				GLFW.GLFW_KEY_P,             // varsayılan tuş: P (istersen değiştir)
 				"category.wolfblood"          // hangi kategori altında görünsün
 		));
 
@@ -27,6 +39,7 @@ public class ExampleModClient implements ClientModInitializer {
 		// iki kez çağrılması zararsız ama gereksizdir. Yoksa mutlaka bir yerde çağrılmalı,
 		// aksi halde form senkronu (ve dolayısıyla ölçek/göz/kulak animasyonu) hiç çalışmaz.
 		WolfClientState.register();
+		WolfLevelClientState.register(); // ADDED
 
 		// Kulak modelinin "baked layer"ını kaydediyoruz - LycanKulakModel.createBodyLayer()
 		// ilk kez kullanılacağı anda (PlayerRenderer'a eklendiğinde) bu tanıma göre inşa edilir.
@@ -36,6 +49,11 @@ public class ExampleModClient implements ClientModInitializer {
 			while (DONUSUM_TUSU.consumeClick()) {
 				if (client.player != null) {
 					client.player.connection.sendCommand("kurtadam");
+				}
+			}
+			while (PANEL_TUSU.consumeClick()) {
+				if (client.player != null) {
+					client.setScreen(new KurtPaneliScreen());
 				}
 			}
 		});

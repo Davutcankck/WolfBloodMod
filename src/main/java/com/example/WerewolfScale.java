@@ -1,10 +1,7 @@
 package com.example;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.EntityDimensions;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 
 import java.util.Set;
 import java.util.UUID;
@@ -27,14 +24,6 @@ public final class WerewolfScale {
         }
         MinecraftServer server = player.getServer();
         return server != null && InfectionData.get(server).isTransformed(player.getUUID());
-    }
-
-    // YENİ: oyuncunun bulunduğu yerde büyümüş haliyle sığacak boşluk var mı?
-    public static boolean yerVarMi(Player player) {
-        EntityDimensions taban = EntityType.PLAYER.getDimensions(); // normal insan boyutu (sabit, mixin'den etkilenmez)
-        EntityDimensions buyumus = taban.scale(OLCEK);
-        AABB kutu = buyumus.makeBoundingBox(player.position());
-        return player.level().noCollision(player, kutu);
     }
 
     public static void istemciAyarla(UUID uuid, boolean donustu) {
