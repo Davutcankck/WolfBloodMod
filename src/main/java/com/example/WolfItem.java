@@ -27,7 +27,7 @@ public class WolfItem {
 
     public static final Item KAOS_IKSIRI = new KaosIksiriItem(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC));
 
-// register() içine:
+
 
 
     public static final Item KURT_DISI = new Item(new Item.Properties());

@@ -53,7 +53,11 @@ public class ExampleModClient implements ClientModInitializer {
 			}
 			while (PANEL_TUSU.consumeClick()) {
 				if (client.player != null) {
-					client.setScreen(new KurtPaneliScreen());
+					if (WolfLevelClientState.enfekteMi()) {
+						client.setScreen(new KurtPaneliScreen());
+					} else {
+						client.player.displayClientMessage(net.minecraft.network.chat.Component.literal("Damarlarında henüz kurt kanı yok."), true);
+					}
 				}
 			}
 		});

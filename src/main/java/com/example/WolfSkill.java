@@ -9,59 +9,63 @@ import java.util.Set;
 /**
  * Yetenek ağacı tanımı (veri odaklı). Panel, sunucu doğrulaması ve puan hesabı BURADAN okur.
  *
- * Koordinatlar ızgara birimidir (piksel değil): x sağa, y AŞAĞI artar.
- *   - Alfa Kurdu ağacın merkezi (0,0)
- *   - Temel (normal kurt adam) ağaç Alfa'nın ALTINDA (y pozitif), Alfa'ya doğru yukarı çıkar
- *   - Kaos dalı Alfa'nın SOLUNDA (x negatif)
- *   - İleride diğer formlar sağa (x pozitif) / yukarı (y negatif) eklenebilir
+ * Koordinatlar ızgara birimidir (piksel değil) ve HER DAL (sekme) için ayrı bir koordinat uzayıdır:
+ *   - x sağa, y AŞAĞI artar. Ağaç yukarıdan aşağı açılır: kök (0,0) en üstte.
+ *   - Temel sekme: kök -> orta dal Alfa Kurdu'nda biter, yanlarda isteğe bağlı dallar var.
+ *   - Kaos sekmesi: Kaos Mührü en üstte, iki yola ayrılır, altta Kaos Kurdu'nda birleşir.
  *
  * Kurallar:
  *   - id: diske yazılır. Yayına çıktıktan sonra değiştirme (açılmış yetenekler id ile saklanır).
  *     Ağaçtan silinen / yeniden adlandırılan id'ler "bilinmeyen" sayılır ve puana yansımaz (puan iade olur).
- *   - onKosulIdleri: listedeki HEPSİ açık olmalı (VE mantığı).
+ *   - onKosulIdleri: listedeki HEPSİ açık olmalı (VE mantığı). Başka sekmeden ön koşul verilebilir
+ *     (örn. Kaos Mührü <- Alfa Kurdu), panelde sekmeler arası çizgi çizilmez.
  *   - maliyet 0 olan düğüm herkese (enfekte) otomatik açıktır, diske yazılmaz (kök gibi).
  *   - minSeviye: düğümü açmak için gereken en düşük seviye.
  *   - Puan: Lv2'den itibaren her level 1 puan verir (toplam MAX_SEVIYE - 1).
  */
 public enum WolfSkill {
 
-    // ================= TEMEL AĞAÇ (normal kurt adam) =================
+    // ================= TEMEL SEKME (normal kurt adam) =================
     //            id                      dal         x   y  mal  minLv  ad                 açıklama                                     ön koşullar
-    KURT_KANI    ("kurt_kani",           Dal.TEMEL,  0,  3, 0,   1,  "Kurt Kanı",       "Damarlarındaki lanetin kaynağı. Ağacın kökü."),
-    VAHSI_PENCE  ("vahsi_pence",         Dal.TEMEL,  0,  2, 1,   1,  "Vahşi Pençe",     "Taslak: temel saldırı gücü artışı.",          "kurt_kani"),
-    AV_ICGUDUSU  ("av_icgudusu",         Dal.TEMEL,  0,  1, 1,   1,  "Av İçgüdüsü",     "Taslak: hareket ve duyu bonusu.",             "vahsi_pence"),
-    KALIN_POST   ("kalin_post",          Dal.TEMEL, -1,  2, 1,   1,  "Kalın Post",      "Taslak: dayanıklılık bonusu (isteğe bağlı).", "kurt_kani"),
-    KESKIN_DUYU  ("keskin_duyular",      Dal.TEMEL,  1,  2, 1,   1,  "Keskin Duyular",  "Taslak: algı bonusu (isteğe bağlı).",         "kurt_kani"),
-    ALFA_KURDU   ("alfa_kurdu",          Dal.TEMEL,  0,  0, 1,   7,  "Alfa Kurdu",      "Sürünün lideri. Gelişmiş formların kapısı.",  "av_icgudusu"),
+    KURT_KANI    ("kurt_kani",           Dal.TEMEL,  0,  0, 0,   1,  "Kurt Kanı",       "Damarlarındaki lanetin kaynağı. Ağacın kökü."),
+    KALIN_POST   ("kalin_post",          Dal.TEMEL, -2,  1, 1,   1,  "Kalın Post",      "Taslak: dayanıklılık bonusu (isteğe bağlı).", "kurt_kani"),
+    VAHSI_PENCE  ("vahsi_pence",         Dal.TEMEL,  0,  1, 1,   1,  "Vahşi Pençe",     "Taslak: temel saldırı gücü artışı.",          "kurt_kani"),
+    KESKIN_DUYU  ("keskin_duyular",      Dal.TEMEL,  2,  1, 1,   1,  "Keskin Duyular",  "Taslak: algı bonusu (isteğe bağlı).",         "kurt_kani"),
+    AV_ICGUDUSU  ("av_icgudusu",         Dal.TEMEL,  0,  2, 1,   1,  "Av İçgüdüsü",     "Taslak: hareket ve duyu bonusu.",             "vahsi_pence"),
+    ALFA_KURDU   ("alfa_kurdu",          Dal.TEMEL,  0,  3, 1,   7,  "Alfa Kurdu",      "Sürünün lideri. Gelişmiş formların kapısı.",  "av_icgudusu"),
 
-    // ================= KAOS DALI (Kaos İksiri ile uyanır) =================
-    KAOS_MUHRU   ("kaos_muhru",          Dal.KAOS,  -1,  0, 1,   7,  "Kaos Mührü",      "Boşluğun mührü. Kaos yeteneklerinin girişi.", "alfa_kurdu"),
+    // ================= KAOS SEKMESİ (Kaos İksiri ile uyanır) =================
+    KAOS_MUHRU   ("kaos_muhru",          Dal.KAOS,   0,  0, 1,   7,  "Kaos Mührü",      "Boşluğun mührü. Kaos yeteneklerinin girişi.", "alfa_kurdu"),
 
-    // Üst yol: patlayıcı hasar
-    ZIRH_DELME_1 ("kaos_zirh_delme_1",   Dal.KAOS,  -2, -1, 1,   8,  "Boşluk Pençesi I",  "Taslak: vuruşların zırhın bir kısmını yok sayar.", "kaos_muhru"),
-    ZIRH_DELME_2 ("kaos_zirh_delme_2",   Dal.KAOS,  -3, -1, 1,   9,  "Boşluk Pençesi II", "Taslak: zırh delme oranı artar.",                  "kaos_zirh_delme_1"),
+    // Sol yol: patlayıcı hasar
+    ZIRH_DELME_1 ("kaos_zirh_delme_1",   Dal.KAOS,  -2,  1, 1,   8,  "Boşluk Pençesi I",  "Taslak: vuruşların zırhın bir kısmını yok sayar.", "kaos_muhru"),
+    ZIRH_DELME_2 ("kaos_zirh_delme_2",   Dal.KAOS,  -2,  2, 1,   9,  "Boşluk Pençesi II", "Taslak: zırh delme oranı artar.",                  "kaos_zirh_delme_1"),
 
-    // Alt yol: agresif hayatta kalma
-    KAN_HASADI   ("kaos_kan_hasadi",     Dal.KAOS,  -2,  1, 1,   8,  "Kan Hasadı",      "Taslak: öldürdükçe can yenilenir.",             "kaos_muhru"),
-    KAOS_ADIMI   ("kaos_adimi",          Dal.KAOS,  -3,  1, 1,   9,  "Kaos Adımı",      "Taslak: hasardan kaçınma şansı (i-frames).",    "kaos_kan_hasadi"),
+    // Sağ yol: agresif hayatta kalma
+    KAN_HASADI   ("kaos_kan_hasadi",     Dal.KAOS,   2,  1, 1,   8,  "Kan Hasadı",      "Taslak: öldürdükçe can yenilenir.",             "kaos_muhru"),
+    KAOS_ADIMI   ("kaos_adimi",          Dal.KAOS,   2,  2, 1,   9,  "Kaos Adımı",      "Taslak: hasardan kaçınma şansı (i-frames).",    "kaos_kan_hasadi"),
 
-    // İki yol birleşir: form
-    KAOS_KURDU   ("kaos_kurdu",          Dal.KAOS,  -4,  0, 1,  10,  "Kaos Kurdu",      "Kaos formunun kilidi. Boşluğun kurdu uyanır.",  "kaos_zirh_delme_2", "kaos_adimi");
+    // İki yol aşağıda birleşir: form
+    KAOS_KURDU   ("kaos_kurdu",          Dal.KAOS,   0,  3, 1,  10,  "Kaos Kurdu",      "Kaos formunun kilidi. Boşluğun kurdu uyanır.",  "kaos_zirh_delme_2", "kaos_adimi");
 
     // ---------------------------------------------------------------------------------
 
+    /** Dal = panelde bir sekme. Sıra (ordinal) sekmelerin soldan sağa sırasıdır. */
     public enum Dal {
-        TEMEL("Kurt", false, 0xFFB8B8C0),
-        KAOS("Kaos", true, 0xFF9B4DDB);
+        //     ad       katalizör  vurgu rengi  çizgi rengi
+        TEMEL("Temel",  false,     0xFFD9A441,  0xFFD03030),  // altın vurgu, KIRMIZI çizgiler
+        KAOS ("Kaos",   true,      0xFF9B4DDB,  0xFFA24CE0);  // MOR çizgiler
 
         private final String ad;
         private final boolean katalizorGerekli;
-        private final int renk; // ARGB
+        private final int renk;        // düğüm vurgusu (ARGB)
+        private final int cizgiRengi;  // bağlantı çizgileri (ARGB)
 
-        Dal(String ad, boolean katalizorGerekli, int renk) {
+        Dal(String ad, boolean katalizorGerekli, int renk, int cizgiRengi) {
             this.ad = ad;
             this.katalizorGerekli = katalizorGerekli;
             this.renk = renk;
+            this.cizgiRengi = cizgiRengi;
         }
 
         public String getAd() {
@@ -70,6 +74,10 @@ public enum WolfSkill {
 
         public int getRenk() {
             return renk;
+        }
+
+        public int getCizgiRengi() {
+            return cizgiRengi;
         }
 
         /** Dal bir katalizör (iksir) gerektiriyorsa, kilidin açık olup olmadığı. Şimdilik tek katalizör Kaos İksiri. */

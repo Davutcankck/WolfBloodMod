@@ -30,9 +30,9 @@ import java.util.UUID;
 
 public class WolfTransform {
 
-    // DÃ¶nÃ¼ÅŸÃ¼m/enfeksiyon durumu tek doÄŸruluk kaynaÄŸÄ± olarak InfectionData'da tutuluyor.
+    // Dönüşüm/enfeksiyon durumu tek doğruluk kaynağı olarak InfectionData'da tutuluyor.
 
-    private static final long ENFEKSIYON_TAMAMLANMA_SURESI = 24000; // ~1 Minecraft gÃ¼nÃ¼ (20 dakika)
+    private static final long ENFEKSIYON_TAMAMLANMA_SURESI = 24000; // ~1 Minecraft günü (20 dakika)
 
     private static final UUID HIZ_MOD_ID = UUID.fromString("a1111111-0000-0000-0000-000000000001");
     private static final UUID GUC_MOD_ID = UUID.fromString("a2222222-0000-0000-0000-000000000002");
@@ -43,25 +43,25 @@ public class WolfTransform {
     private static final double EKSTRA_CAN = 8.0;
     private static final int ENFEKSIYON_SURESI = 20 * 30;
 
-    // ================= KONTROL KAYBI ANI (kuluÃ§ka sÄ±rasÄ±nda rastgele, kÄ±sa sÃ¼reli) =================
-    // Bellek iÃ§i - kalÄ±cÄ± olmasÄ±na gerek yok, sadece zamanlamayÄ± seyreltmek iÃ§in kullanÄ±lÄ±yor.
+    // ================= KONTROL KAYBI ANI (kuluçka sırasında rastgele, kısa süreli) =================
+    // Bellek içi - kalıcı olmasına gerek yok, sadece zamanlamayı seyreltmek için kullanılıyor.
     private static final Map<UUID, Long> SON_KONTROL_KAYBI = new HashMap<>();
     private static final Random RASTGELE = new Random();
     private  static  final Map<UUID,Boolean> SON_YER_KONTROLU = new HashMap<>() ;
 
-    private static final int KONTROL_KAYBI_SURESI = 20 * 10;      // efekt sÃ¼resi: 4 saniye
-    private static final int KONTROL_KAYBI_MIN_ARALIK = 20 * 60; // aynÄ± oyuncuda en az 60 saniye ara
+    private static final int KONTROL_KAYBI_SURESI = 20 * 10;      // efekt süresi: 4 saniye
+    private static final int KONTROL_KAYBI_MIN_ARALIK = 20 * 60; // aynı oyuncuda en az 60 saniye ara
     private static final int KONTROL_KAYBI_IHTIMALI = 30;       // saniyede bir kontrol, 1/150 ihtimal (~ortalama 2.5 dakikada bir)
 
 
-    // "resource": IntelliJ, ServerLevel'Ä± AutoCloseable bir kaynak sanÄ±p try-with-resources Ã¶neriyor.
-    // Bu yanlÄ±ÅŸ pozitif bir uyarÄ±dÄ±r - level nesnesi sunucu tarafÄ±ndan yÃ¶netilir, elle kapatÄ±lmamalÄ±dÄ±r.
+    // "resource": IntelliJ, ServerLevel'ı AutoCloseable bir kaynak sanıp try-with-resources öneriyor.
+    // Bu yanlış pozitif bir uyarıdır - level nesnesi sunucu tarafından yönetilir, elle kapatılmamalıdır.
     @SuppressWarnings("resource")
     public static void register() {
 
-        // ================= GÄ°RÄ°Å: oyuncu login olduÄŸunda bonuslarÄ± geri yÃ¼kle =================
-        // Attribute modifier'lar oyuncu Ã§Ä±kÄ±ÅŸ yapÄ±nca kaybolur (transient), bu yÃ¼zden her login'de
-        // enfekte/dÃ¶nÃ¼ÅŸÃ¼m durumuna gÃ¶re ilgili bonuslarÄ± yeniden uygulamamÄ±z gerekir.
+        // ================= GİRİÅ: oyuncu login olduğunda bonusları geri yükle =================
+        // Attribute modifier'lar oyuncu çıkış yapınca kaybolur (transient), bu yüzden her login'de
+        // enfekte/dönüşüm durumuna göre ilgili bonusları yeniden uygulamamız gerekir.
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer player = handler.player;
             InfectionData data = InfectionData.get(server);
@@ -69,28 +69,28 @@ public class WolfTransform {
             mevcutFormlariGonder(player, data);
         });
 
-        // ================= RESPAWN: Ã¶lÃ¼p yeniden doÄŸduÄŸunda bonuslarÄ± geri yÃ¼kle =================
-        // Ã–lÃ¼m/respawn sÄ±rasÄ±nda oyuncu iÃ§in yeni bir ServerPlayer nesnesi (ve yeni attribute
-        // instance'larÄ±) oluÅŸturulur, bu yÃ¼zden transient modifier'lar kaybolur.
-        // "alive = false" â†’ gerÃ§ek Ã¶lÃ¼m; "alive = true" â†’ boyut geÃ§iÅŸi (Ã¶lÃ¼m sayÄ±lmaz).
+        // ================= RESPAWN: ölüp yeniden doğduğunda bonusları geri yükle =================
+        // Ölüm/respawn sırasında oyuncu için yeni bir ServerPlayer nesnesi (ve yeni attribute
+        // instance'ları) oluşturulur, bu yüzden transient modifier'lar kaybolur.
+        // "alive = false" â†’ gerçek ölüm; "alive = true" â†’ boyut geçişi (ölüm sayılmaz).
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             InfectionData data = InfectionData.get(newPlayer.serverLevel().getServer());
 
             if (!alive) {
-                // GerÃ§ek Ã¶lÃ¼m + kuluÃ§kadaysa: enfeksiyonu tamamen sÄ±fÄ±rla.
+                // Gerçek ölüm + kuluçkadaysa: enfeksiyonu tamamen sıfırla.
                 if (data.isIncubating(newPlayer.getUUID())) {
                     data.removeIncubation(newPlayer.getUUID());
                     newPlayer.sendSystemMessage(Component.literal(
-                            "Ã–lÃ¼m iÃ§indeki uyanÄ±ÅŸÄ± durdurdu... Kurt kanÄ± vÃ¼cudundan ayrÄ±ldÄ±."));
+                            "Ölüm içindeki uyanışı durdurdu... Kurt kanı vücudundan ayrıldı."));
                 }
 
-                // GerÃ§ek Ã¶lÃ¼m + kurt adam formundaysa: insan olarak respawn et.
-                // Oyuncu isterse yeniden /kurtadam veya G tuÅŸuyla dÃ¶nÃ¼ÅŸebilir.
+                // Gerçek ölüm + kurt adam formundaysa: insan olarak respawn et.
+                // Oyuncu isterse yeniden /kurtadam veya G tuşuyla dönüşebilir.
                 if (data.isTransformed(newPlayer.getUUID())) {
                     data.setTransformed(newPlayer.getUUID(), false);
-                    formDurumunuYayinla(newPlayer, false); // istemcilere bildir (gÃ¶rsel sÄ±fÄ±rlanÄ±r)
+                    formDurumunuYayinla(newPlayer, false); // istemcilere bildir (görsel sıfırlanır)
                     newPlayer.sendSystemMessage(Component.literal(
-                            "Ã–lÃ¼m seni insan formuna geri dÃ¶ndÃ¼rdÃ¼."));
+                            "Ölüm seni insan formuna geri döndürdü."));
                 }
             }
 
@@ -98,17 +98,17 @@ public class WolfTransform {
         });
 
         // ================= KOMUT: /kurtadam (manuel) =================
-        // Bu komut SADECE dÃ¶nÃ¼ÅŸÃ¼m formunu (hÄ±z+gÃ¼Ã§) deÄŸiÅŸtirir. Ekstra can enfekte olduÄŸun
-        // andan itibaren zaten kalÄ±cÄ± olarak Ã¼zerinde, formdan baÄŸÄ±msÄ±z.
-        // Dolunay gecesi insan formuna GERÄ° DÃ–NÃœÅ engellenir â€” ay serbest bÄ±rakana kadar
-        // kurt adam formundan Ã§Ä±kamazsÄ±n. DÃ¶nÃ¼ÅŸmek (insan â†’ kurt adam) her zaman serbesttir.
+        // Bu komut SADECE dönüşüm formunu (hız+güç) değiştirir. Ekstra can enfekte olduğun
+        // andan itibaren zaten kalıcı olarak üzerinde, formdan bağımsız.
+        // Dolunay gecesi insan formuna GERİ DÖNÜÅ engellenir â€” ay serbest bırakana kadar
+        // kurt adam formundan çıkamazsın. Dönüşmek (insan â†’ kurt adam) her zaman serbesttir.
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(Commands.literal("kurtadam").executes(context -> {
                 ServerPlayer player = context.getSource().getPlayerOrException();
                 InfectionData data = InfectionData.get(context.getSource().getServer());
 
                 if (!data.isInfected(player.getUUID())) {
-                    context.getSource().sendFailure(Component.literal("Sen sÄ±radan bir insansÄ±n, damarlarÄ±nda kurt kanÄ± yok."));
+                    context.getSource().sendFailure(Component.literal("Sen sıradan bir insansın, damarlarında kurt kanı yok."));
                     return 0;
                 }
 
@@ -116,22 +116,22 @@ public class WolfTransform {
                         && player.serverLevel().isNight();
 
                 if (data.isTransformed(player.getUUID())) {
-                    // Dolunayda geri dÃ¶nÃ¼ÅŸ yasak
+                    // Dolunayda geri dönüş yasak
                     if (dolunayGecesi) {
-                        context.getSource().sendFailure(Component.literal("AyÄ±n gÃ¼cÃ¼ne karÅŸÄ± koyamazsÄ±n... SabahÄ± bekle."));
+                        context.getSource().sendFailure(Component.literal("Ayın gücüne karşı koyamazsın... Sabahı bekle."));
                         return 0;
                     }
                     donusumuKaldir(player, data);
-                    context.getSource().sendSuccess(() -> Component.literal("Ä°nsan formuna geri dÃ¶ndÃ¼n."), false);
+                    context.getSource().sendSuccess(() -> Component.literal("İnsan formuna geri döndün."), false);
                 } else {
                     donusumUygula(player, data); // sessiz, ses YOK
-                    context.getSource().sendSuccess(() -> Component.literal("Kurt adama dÃ¶nÃ¼ÅŸtÃ¼n! Uluu!"), false);
+                    context.getSource().sendSuccess(() -> Component.literal("Kurt adama dönüştün! Uluu!"), false);
                 }
                 return 1;
             }));
         });
 
-        // ================= Ä°KSÄ°R KULLANIMI: sadece dolunayda iÃ§ilebilir =================
+        // ================= İKSİR KULLANIMI: sadece dolunayda içilebilir =================
         UseItemCallback.EVENT.register((player, level, hand) -> {
             ItemStack stack = player.getItemInHand(hand);
 
@@ -139,26 +139,26 @@ public class WolfTransform {
                 InfectionData data = InfectionData.get(serverPlayer.serverLevel().getServer());
 
                 if (level.getMoonPhase() != 0 || !level.isNight()) {
-                    serverPlayer.sendSystemMessage(Component.literal("Kan henÃ¼z uyanmaya hazÄ±r deÄŸil..."));
+                    serverPlayer.sendSystemMessage(Component.literal("Kan henüz uyanmaya hazır değil..."));
                     return InteractionResultHolder.fail(stack);
                 }
 
                 if (data.isInfected(player.getUUID())) {
-                    serverPlayer.sendSystemMessage(Component.literal("Zaten damarlarÄ±nda kurt kanÄ± var."));
+                    serverPlayer.sendSystemMessage(Component.literal("Zaten damarlarında kurt kanı var."));
                     return InteractionResultHolder.pass(stack);
                 }
 
                 if (data.isIncubating(player.getUUID())) {
-                    serverPlayer.sendSystemMessage(Component.literal("KanÄ±ndaki ÅŸey zaten uyanÄ±yor..."));
+                    serverPlayer.sendSystemMessage(Component.literal("Kanındaki şey zaten uyanıyor..."));
                     return InteractionResultHolder.pass(stack);
                 }
 
-                data.startIncubation(player.getUUID(), serverPlayer.serverLevel().getServer().getTickCount());
+                data.startIncubation(player.getUUID(), level.getGameTime() + ENFEKSIYON_TAMAMLANMA_SURESI);
 
                 player.addEffect(new MobEffectInstance(WolfEffects.ENFEKSIYON, (int) ENFEKSIYON_TAMAMLANMA_SURESI, 0, false, false, true));
                 player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, ENFEKSIYON_SURESI, 0, false, false, false));
                 player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, ENFEKSIYON_SURESI, 0, false, false, false));
-                serverPlayer.sendSystemMessage(Component.literal("DamarlarÄ±na bir ÅŸey enjekte edildi... Ä°Ã§indeki bir ÅŸey uyanÄ±yor."));
+                serverPlayer.sendSystemMessage(Component.literal("Damarlarına bir şey enjekte edildi... İçindeki bir şey uyanıyor."));
 
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
@@ -168,7 +168,7 @@ public class WolfTransform {
             return InteractionResultHolder.pass(stack);
         });
 
-        // ================= TICK DÃ–NGÃœSÃœ: saniyede bir kontrol =================
+        // ================= TICK DÖNGÜSÜ: saniyede bir kontrol =================
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (server.getTickCount() % 20 != 0) return;
 
@@ -180,21 +180,21 @@ public class WolfTransform {
 
                 Long tamamlanmaTick = data.getIncubationCompleteAt(uuid);
                 if (tamamlanmaTick != null) {
-                    if (server.getTickCount() >= tamamlanmaTick) {
+                    if (level.getGameTime() >= tamamlanmaTick) {
                         data.removeIncubation(uuid);
                         data.addInfected(uuid);
 
-                        // ARTIK: enfeksiyon tamamlanÄ±nca SADECE ekstra can bonusu gelir,
-                        // oyuncu otomatik kurt adam formuna geÃ§mez. Forma geÃ§iÅŸ ancak
-                        // dolunay gecesi (aÅŸaÄŸÄ±da) veya /kurtadam komutuyla olur.
+                        // ARTIK: enfeksiyon tamamlanınca SADECE ekstra can bonusu gelir,
+                        // oyuncu otomatik kurt adam formuna geçmez. Forma geçiş ancak
+                        // dolunay gecesi (aşağıda) veya /kurtadam komutuyla olur.
                         uygulaSaglikBonusu(player);
                         player.heal((float) EKSTRA_CAN);
 
-                        player.sendSystemMessage(Component.literal("Enfeksiyon tamamlandÄ±. DamarlarÄ±nda artÄ±k kurt kanÄ± akÄ±yor..."));
+                        player.sendSystemMessage(Component.literal("Enfeksiyon tamamlandı. Damarlarında artık kurt kanı akıyor..."));
                         level.playSound(null, player.blockPosition(), SoundEvents.WOLF_HOWL, SoundSource.PLAYERS, 1.0f, 1.0f);
                     } else {
-                        // Enfeksiyon devam ederken, arada bir "iÃ§indeki canavar" kÄ±sa sÃ¼reliÄŸine
-                        // kontrolÃ¼ ele geÃ§irmeye Ã§alÄ±ÅŸÄ±yormuÅŸ hissi vermek iÃ§in rastgele tetikleme.
+                        // Enfeksiyon devam ederken, arada bir "içindeki canavar" kısa süreliğine
+                        // kontrolü ele geçirmeye çalışıyormuş hissi vermek için rastgele tetikleme.
                         kontrolKaybiIhtimaliniDene(player, uuid, server);
                     }
                 }
@@ -204,15 +204,15 @@ public class WolfTransform {
 
                 if (dolunayGecesi && enfekteAmaInsan) {
                     donusumUygula(player, data);
-                    player.sendSystemMessage(Component.literal("Ay seni Ã§aÄŸÄ±rÄ±yor... KontrolÃ¼ kaybediyorsun!"));
+                    player.sendSystemMessage(Component.literal("Ay seni çağırıyor... Kontrolü kaybediyorsun!"));
                     level.playSound(null, player.blockPosition(), SoundEvents.WOLF_HOWL, SoundSource.PLAYERS, 1.0f, 1.0f);
                 }
             }
         });
     }
 
-    // Login/respawn sonrasÄ± Ã§aÄŸrÄ±lÄ±r: enfekte ise can bonusunu, dÃ¶nÃ¼ÅŸmÃ¼ÅŸse hÄ±z+gÃ¼Ã§ bonusunu geri yÃ¼kler.
-    // Ä°kisi birbirinden baÄŸÄ±msÄ±z kontrol edilir.
+    // Login/respawn sonrası çağrılır: enfekte ise can bonusunu, dönüşmüşse hız+güç bonusunu geri yükler.
+    // İkisi birbirinden bağımsız kontrol edilir.
     private static void senkronizeEt(ServerPlayer player, InfectionData data) {
         if (data.isInfected(player.getUUID())) {
             uygulaSaglikBonusu(player);
@@ -224,14 +224,14 @@ public class WolfTransform {
         WolfProgression.senkronla(player, data);
     }
 
-    // ================= CAN BONUSU: enfekte olduÄŸun andan itibaren kalÄ±cÄ±, forma baÄŸlÄ± deÄŸil =================
+    // ================= CAN BONUSU: enfekte olduğun andan itibaren kalıcı, forma bağlı değil =================
 
     private static void uygulaSaglikBonusu(ServerPlayer player) {
         Objects.requireNonNull(player.getAttribute(Attributes.MAX_HEALTH)).addTransientModifier(
                 new AttributeModifier(CAN_MOD_ID, "kurt_can", EKSTRA_CAN, AttributeModifier.Operation.ADDITION));
     }
 
-    // ================= SAVAÅ BONUSLARI (hÄ±z + gÃ¼Ã§): sadece kurt adam formundayken =================
+    // ================= SAVAÅ BONUSLARI (hız + güç): sadece kurt adam formundayken =================
 
     private static void uygulaSavasBonuslari(ServerPlayer player) {
         Objects.requireNonNull(player.getAttribute(Attributes.MOVEMENT_SPEED)).addTransientModifier(
@@ -245,17 +245,17 @@ public class WolfTransform {
         Objects.requireNonNull(player.getAttribute(Attributes.ATTACK_DAMAGE)).removeModifier(GUC_MOD_ID);
     }
 
-    // ================= FORM DEÄÄ°ÅTÄ°RME (sadece hÄ±z+gÃ¼Ã§; can bonusu ayrÄ± yÃ¶netiliyor) =================
+    // ================= FORM DEÄİÅTİRME (sadece hız+güç; can bonusu ayrı yönetiliyor) =================
 
     private static void donusumUygula(ServerPlayer player, InfectionData data) {
-        data.setTransformed(player.getUUID(), true); // KALICI: diske yazÄ±lÄ±r
+        data.setTransformed(player.getUUID(), true); // KALICI: diske yazılır
         uygulaSavasBonuslari(player);
         player.refreshDimensions();
         formDurumunuYayinla(player, true);
     }
 
     private static void donusumuKaldir(ServerPlayer player, InfectionData data) {
-        data.setTransformed(player.getUUID(), false); // KALICI: diske yazÄ±lÄ±r
+        data.setTransformed(player.getUUID(), false); // KALICI: diske yazılır
         kaldirSavasBonuslari(player);
         player.refreshDimensions();
         formDurumunuYayinla(player, false);
@@ -287,11 +287,11 @@ public class WolfTransform {
 
         Long sonTetiklenme = SON_KONTROL_KAYBI.get(uuid);
         if (sonTetiklenme != null && simdikiTick - sonTetiklenme < KONTROL_KAYBI_MIN_ARALIK) {
-            return; // Ã§ok yakÄ±n zamanda tetiklendi, bekle
+            return; // çok yakın zamanda tetiklendi, bekle
         }
 
         if (RASTGELE.nextInt(KONTROL_KAYBI_IHTIMALI) != 0) {
-            return; // bu sefer ÅŸansÄ±na kÃ¼smedi
+            return; // bu sefer şansına küsmedi
         }
 
         SON_KONTROL_KAYBI.put(uuid, simdikiTick);
@@ -299,14 +299,14 @@ public class WolfTransform {
     }
 
     private static void kontrolKaybiUygula(ServerPlayer player) {
-        // Sunucu tarafÄ±nda kÄ±sa sÃ¼reli bir "saldÄ±rganlÄ±k" hissi: gÃ¼Ã§ + hÄ±z artÄ±ÅŸÄ±
+        // Sunucu tarafında kısa süreli bir "saldırganlık" hissi: güç + hız artışı
         player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, KONTROL_KAYBI_SURESI, 0, false, false, true));
         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, KONTROL_KAYBI_SURESI, 1, false, false, true));
 
-        player.sendSystemMessage(Component.literal("Ä°Ã§indeki canavar bir an iÃ§in dÄ±ÅŸarÄ± Ã§Ä±kmaya Ã§alÄ±ÅŸtÄ±..."));
+        player.sendSystemMessage(Component.literal("İçindeki canavar bir an için dışarı çıkmaya çalıştı..."));
         player.level().playSound(null, player.blockPosition(), SoundEvents.WOLF_GROWL, SoundSource.PLAYERS, 0.8f, 0.7f);
 
-        // Ä°stemciye bildir ki ekranda kÄ±zarma + damar efekti gÃ¶stersin
+        // İstemciye bildir ki ekranda kızarma + damar efekti göstersin
         FriendlyByteBuf buf = PacketByteBufs.create();
         buf.writeInt(KONTROL_KAYBI_SURESI);
         ServerPlayNetworking.send(player, WolfNetworking.KONTROL_KAYBI, buf);

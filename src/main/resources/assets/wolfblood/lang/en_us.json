@@ -4,5 +4,6 @@
   "item.wolfblood.kurt_disi": "Wolf Fang",
   "item.wolfblood.kurt_kani_iksiri": "Wolf Blood Potion",
   "item.wolfblood.kaos_iksiri" : "Kaos İksiri",
-  "item.wolfblood.probis" : "Probis"
+  "item.wolfblood.probis" : "Probis",
+  "effect.wolfblood.enfeksiyon": "Infection"
 }

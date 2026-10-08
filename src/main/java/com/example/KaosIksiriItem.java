@@ -50,7 +50,7 @@ public class KaosIksiriItem extends Item {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        return true; // büyülü eşya parıltısı
+        return false; // büyülü eşya parıltısı
     }
 
     @Override
