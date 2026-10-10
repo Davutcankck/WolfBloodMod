@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component;
 
 /**
  * Kurt Paneli (ana panel): rütbe, seviye, XP barı, yetenek puanı ve Kaos durumu.
- * "Yetenekler" butonu yetenek ağacı ekranını (YetenekAgaciScreen) açar.
+ * "Yetenekler" butonu yetenek ağacı ekranını (WolfSkillScreen) açar.
  *
  * Çizim tamamen kodla yapılıyor (doku dosyası gerekmiyor).
  */
@@ -43,7 +43,7 @@ public class KurtPaneliScreen extends Screen {
 
         int butonGenislik = 120;
         yetenekButonu = Button.builder(Component.literal("Yetenekler"),
-                        dugme -> this.minecraft.setScreen(new YetenekAgaciScreen(this)))
+                        dugme -> this.minecraft.setScreen(new WolfSkillScreen(this)))
                 .bounds(panelX + (PANEL_GENISLIK - butonGenislik) / 2, panelY + PANEL_YUKSEKLIK - 32, butonGenislik, 20)
                 .build();
         this.addRenderableWidget(yetenekButonu);

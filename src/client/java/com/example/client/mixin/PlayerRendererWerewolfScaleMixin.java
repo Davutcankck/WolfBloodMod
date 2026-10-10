@@ -1,6 +1,7 @@
 package com.example.client.mixin;
 
 import com.example.WerewolfScale;
+import com.example.client.WerewolfClawsLayer;
 import com.example.client.WerewolfEarsLayer;
 import com.example.client.WerewolfEyesLayer;
 import com.example.client.WolfClientState;
@@ -43,5 +44,6 @@ public abstract class PlayerRendererWerewolfScaleMixin extends LivingEntityRende
         PlayerRenderer self = (PlayerRenderer) (Object) this;
         this.addLayer(new WerewolfEyesLayer(self));
         this.addLayer(new WerewolfEarsLayer(self, context.getModelSet()));
+        this.addLayer(new WerewolfClawsLayer(self, context.getModelSet()));
     }
 }

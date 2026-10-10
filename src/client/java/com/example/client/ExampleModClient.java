@@ -44,6 +44,7 @@ public class ExampleModClient implements ClientModInitializer {
 		// Kulak modelinin "baked layer"ını kaydediyoruz - LycanKulakModel.createBodyLayer()
 		// ilk kez kullanılacağı anda (PlayerRenderer'a eklendiğinde) bu tanıma göre inşa edilir.
 		EntityModelLayerRegistry.registerModelLayer(WolfModelLayers.LYCAN_KULAK, LycanKulakModel::createBodyLayer);
+		EntityModelLayerRegistry.registerModelLayer(WolfModelLayers.LYCAN_PENCE, LycanPencelerModel::createBodyLayer);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (DONUSUM_TUSU.consumeClick()) {
