@@ -14,9 +14,8 @@ import java.util.UUID;
 
 public class InfectionData extends SavedData {
 
-    // Seviye sınırı. Ağaçtaki tüm düğümleri açmak için (maliyetlerin toplamı + 1) kadar seviye gerekir.
-    // Şu anki ağaç: 11 puan -> Lv12. Ağaca düğüm ekleyince bunu da gözden geçir.
-    public static final int MAX_SEVIYE = 12;
+    // Seviye sınırı: 4 daldaki toplam 30 puanlık yetenek ağacını açabilmek için Lv31
+    public static final int MAX_SEVIYE = 31;
 
     // Enfekte oyuncuların listesi (kalıcı - damarında kurt kanı olan herkes, dönüşmüş olsun olmasın)
     private final Set<UUID> infectedPlayers = new HashSet<>();

@@ -15,20 +15,18 @@ import java.util.Set;
  *            Vahşi Uyanış (0,0)
  *            /                \
  *   Hayvani Çeviklik (-1,1)  Yırtıcı İçgüdü (1,1)
- *        |                        |                      ÜST ELMAS (Temel)
- *   Keskin Pençeler (-1,2)   Kalın Post (1,2)
- *            \                /
- *             Alfa Kurdu (0,3)
+ *            \                /                      ÜST ELMAS (Temel)
+ *             Alfa Kurdu (0,2)  <- BÜYÜK MERKEZ DÜĞÜM (Kırmızı gözlü)
  *                   |
- *                   |   (iki birimlik uzun hat)
+ *                   |   (iki birimlik uzun dikey hat)
  *                   |
- *             Kaos Mührü (0,5)   <- mühür kontrol düğümü (satın alınmaz)
+ *             Kaos Mührü (0,4)  <- mühür kontrol düğümü (satın alınmaz)
  *            /                \
- *   Gölge Adım (-1,6)     Hiçlik Pençesi (1,6)
- *        |                      |                        ALT ELMAS (Kaos)
- *   Avcının Ziyafeti (-1,7)  Kaos Patlaması (1,7)
+ *   Gölge Adım (-1,5)     Hiçlik Pençesi (1,5)
+ *        |                      |                    ALT ELMAS (Kaos)
+ *   Avcının Ziyafeti (-1,6)  Kaos Patlaması (1,6)
  *            \                /
- *       Kaosun Enkarnasyonu (0,8)
+ *       Kaosun Enkarnasyonu (0,7)
  *
  * Kurallar:
  *   - id: diske yazılır. Yayına çıktıktan sonra değiştirme (açılmış yetenekler id ile saklanır).
@@ -43,36 +41,32 @@ import java.util.Set;
  */
 public enum WolfSkill {
 
-    // ================= ÜST ELMAS (normal kurt adam) =================
-    //            id                    dal         x   y  mal  minLv  ad                    açıklama                                          ön koşullar
-    VAHSI_UYANIS ("root_node",          Dal.TEMEL,  0,  0, 0,   1,  "Vahşi Uyanış",       "Kurt kanının ilk uyanışı. Ağacın kökü."),
-    HAYVANI_CEVIKLIK("agility_node",    Dal.TEMEL, -1,  1, 1,   2,  "Hayvani Çeviklik",   "Taslak: hareket hızı ve çeviklik bonusu.",        "root_node"),
-    YIRTICI_ICGUDU("instinct_node",     Dal.TEMEL,  1,  1, 1,   2,  "Yırtıcı İçgüdü",     "Taslak: saldırı gücü ve algı bonusu.",            "root_node"),
-    KESKIN_PENCELER("sharp_claws_node", Dal.TEMEL, -1,  2, 1,   3,  "Keskin Pençeler",    "Taslak: pençe hasarı bonusu.",                    "agility_node"),
-    KALIN_POST   ("thick_skin_node",    Dal.TEMEL,  1,  2, 1,   3,  "Kalın Post",         "Taslak: hasar azaltma bonusu.",                   "instinct_node"),
-    ALFA_KURDU   ("alpha_node",         Dal.TEMEL,  0,  3, 1,   7,  "Alfa Kurdu",         "Sürünün lideri. Gelişmiş formların kapısı.",      "sharp_claws_node", "thick_skin_node"),
+    // ================= ÜST ELMAS: TEMEL DAL (Kök -> Çeviklik/İçgüdü -> Alfa) =================
+    VAHSI_UYANIS       ("vahsi_uyanis",        Dal.TEMEL,  0, 0, 0,  1,  "Vahşi Uyanış",         "Kurt kanının damarlardaki uyanışı. Tüm güçlerin başlangıcı."),
+    HAYVANI_CEVIKLIK   ("hayvani_ceviklik",    Dal.TEMEL, -1, 1, 1,  2,  "Hayvani Çeviklik",     "Reflekslerin keskinleşir, hareket hızın artar.",                      "vahsi_uyanis"),
+    YIRTICI_ICGUDU     ("yirtici_icgudu",      Dal.TEMEL,  1, 1, 1,  2,  "Yırtıcı İçgüdü",       "Avcı duyuların güçlenir, saldırı gücün artar.",                       "vahsi_uyanis"),
+    ALFA_KURDU         ("alfa_kurdu",          Dal.TEMEL,  0, 2, 1,  7,  "Alfa Kurdu",           "Sürünün mutlak lideri. Bedenin güçlenir, kadim mühürlere kapı açar.", "hayvani_ceviklik", "yirtici_icgudu"),
 
-    // ================= DARBOĞAZ: MÜHÜR DÜĞÜMÜ =================
-    KAOS_MUHRU   ("chaos_seal_node",    Dal.TEMEL,  0,  5, 0,   1,  "Kaos Mührü",         "Boşluğun mührü. İşlenince Kaos yolu açılır.",     "alpha_node"),
+    // ================= DARBOĞAZ: MÜHÜR DÜĞÜMÜ (Uzun hat) =================
+    KAOS_MUHRU         ("kaos_muhru",          Dal.TEMEL,  0, 4, 0,  1,  "Kaos Mührü",           "Boşluğun kadim mührü. Kaos Mührü işlenerek uyanır.",                  "alfa_kurdu"),
 
-    // ================= ALT ELMAS (Kaos) =================
-    GOLGE_ADIM   ("shadow_step_node",   Dal.KAOS,  -1,  6, 1,   8,  "Gölge Adım",         "Taslak: hasardan kaçınma şansı (i-frames).",      "chaos_seal_node"),
-    HICLIK_PENCESI("void_claw_node",    Dal.KAOS,   1,  6, 1,   8,  "Hiçlik Pençesi",     "Taslak: vuruşlar zırhın bir kısmını yok sayar.",  "chaos_seal_node"),
-    AVCININ_ZIYAFETI("hunters_feast_node", Dal.KAOS, -1, 7, 1,  9,  "Avcının Ziyafeti",   "Taslak: öldürdükçe can yenilenir.",               "shadow_step_node"),
-    KAOS_PATLAMASI("chaos_burst_node",  Dal.KAOS,   1,  7, 1,   9,  "Kaos Patlaması",     "Taslak: patlayıcı hasar.",                        "void_claw_node"),
-    KAOSUN_ENKARNASYONU("chaos_ultimate_node", Dal.KAOS, 0, 8, 1, 10, "Kaosun Enkarnasyonu", "Zirve düğüm: Kaos formunun kilidi.",            "hunters_feast_node", "chaos_burst_node");
+    // ================= ALT ELMAS: KAOS DALI =================
+    GOLGE_ADIM         ("golge_adim",          Dal.KAOS,  -1, 5, 1,  8,  "Gölge Adım",           "Saldırılardan gölgelere sığınarak sıyrılma şansı.",                   "kaos_muhru"),
+    AVCININ_ZIYAFETI   ("avcinin_ziyafeti",    Dal.KAOS,  -1, 6, 1,  9,  "Avcının Ziyafeti",     "Düşmanlarını katlettiğinde canını yenile.",                           "golge_adim"),
+    HICLIK_PENCESI     ("hiclik_pencesi",      Dal.KAOS,   1, 5, 1,  8,  "Hiçlik Pençesi",       "Pençelerin hedefin zırhını kısmen yok sayar.",                        "kaos_muhru"),
+    KAOS_PATLAMASI     ("kaos_patlamasi",      Dal.KAOS,   1, 6, 1,  9,  "Kaos Patlaması",       "Vuruşlarında kaotik bir alan hasarı patlaması oluşturur.",             "hiclik_pencesi"),
+    KAOSUN_ENKARNASYONU("kaosun_enkarnasyonu", Dal.KAOS,   0, 7, 1, 10,  "Kaosun Enkarnasyonu",  "Kaos formunun mutlak zirvesi. Yıkıcı güç patlaması.",                  "avcinin_ziyafeti", "kaos_patlamasi");
 
     // ---------------------------------------------------------------------------------
 
-    /** Dal: düğümlerin hangi kilide bağlı olduğunu söyler (görsel sekme değil, mantıksal gruplama). */
+    /** Dal: görsel renk ve mühür kuralı. */
     public enum Dal {
-        //     ad       mühür gerekli  vurgu rengi
-        TEMEL("Temel",  false,         0xFFD9A441),
-        KAOS ("Kaos",   true,          0xFF9B4DDB);
+        TEMEL("Temel", false, 0xFFFFD700), // Altın sarısı
+        KAOS ("Kaos",  true,  0xFFBA55D3); // Mor
 
         private final String ad;
         private final boolean muhurGerekli;
-        private final int renk; // ARGB
+        private final int renk;
 
         Dal(String ad, boolean muhurGerekli, int renk) {
             this.ad = ad;
@@ -88,7 +82,6 @@ public enum WolfSkill {
             return renk;
         }
 
-        /** Dal bir mühür gerektiriyorsa, mührün işlenmiş olup olmadığı. Şimdilik tek mühür Kaos Mührü. */
         public boolean kilitAcikMi(boolean kaosMuhruVar) {
             return !muhurGerekli || kaosMuhruVar;
         }

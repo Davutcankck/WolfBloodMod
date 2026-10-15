@@ -216,6 +216,7 @@ public class WolfTransform {
     private static void senkronizeEt(ServerPlayer player, InfectionData data) {
         if (data.isInfected(player.getUUID())) {
             uygulaSaglikBonusu(player);
+            WolfSkillPassives.uygulaBonuslar(player, data);
         }
         if (data.isTransformed(player.getUUID())) {
             uygulaSavasBonuslari(player);

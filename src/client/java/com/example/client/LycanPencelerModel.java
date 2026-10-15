@@ -23,43 +23,38 @@ import net.minecraft.world.entity.Entity;
 // sagPence / solPence PUBLIC: büyüme animasyonu için layer xScale/yScale/zScale ayarlıyor.
 public class LycanPencelerModel<T extends Entity> extends EntityModel<T> {
 
-    // ============ AYARLAR (oyunda bakıp buradan oynayabilirsin) ============
+    // ============ AYARLAR ============
 
     // Yerleşim
     private static final float EL_ALT_Y = 10.0F;        // elin alt kenarı (kol pivot'una göre)
-    private static final float KOL_MERKEZ_X = 1.0F;     // klasik kol: ±1. Slim (Alex) kol için 0.5 yap
-    private static final float ON_Z = -1.0F;            // bıçak tabanının merkezi (taban z = -2...0 arası, elin ön yarısı)
-    private static final float KOK_Y = -0.8F;           // pençe tabanı elin biraz İÇİNDE başlar, birleşim görünmez
+    private static final float KOL_MERKEZ_X = 1.0F;     // klasik kol: ±1
+    private static final float KOK_Y = -0.15F;          // elin tam ucunda başlar (hafif gömülü birleşim)
 
-    // 3 ana pençe: yatay konum, boy çarpanı, hafif açılma (Z dönüşü, rad)
-    private static final float[] PENCE_X = {-1.2F, 0.0F, 1.2F};
-    private static final float[] UZUNLUK = {0.90F, 1.00F, 0.90F};
-    private static final float[] YAYILMA = {0.06F, 0.0F, -0.06F};
-    private static final float BASLANGIC_EGIM = -0.08F; // tüm pençenin öne eğimi
+    // Parmakların göreceli X konumları (disYon ile çarpılır: pozitif dış, negatif iç)
+    // 0: İşaret parmağı, 1: Orta parmak, 2: Yüzük/Dış parmak
+    private static final float[] PENCE_DIS_X = {-0.45F, 0.35F, 1.15F};
+    private static final float[] PENCE_Z = {-0.45F, -0.50F, -0.40F};
+    private static final float[] UZUNLUK = {0.90F, 1.00F, 0.88F};
+    private static final float[] YAYILMA_DIS = {-0.04F, 0.0F, 0.08F}; // Z rotasyonu (dışa/içe açılma)
+    private static final float BASLANGIC_EGIM = 0.08F;  // bize doğru (arkaya / avuç içine) başlangıç eğimi
 
-    // Tırnak şekli: GENISLIK (X, tırnağın eni) tabandan uca azalır (sivrilir), KALINLIK (Z) sabit, 7 segment
-    private static final float KALINLIK = 0.7F;
-    private static final float[] GENISLIK = {1.2F, 1.1F, 0.95F, 0.78F, 0.6F, 0.4F, 0.2F};
-    private static final float SEGMENT_UZUNLUK = 0.65F; // x 7 segment = pençenin toplam boyu (~4.5)
-    private static final float ORTUSME = 0.12F;         // segmentler birleşimde çentik kalmasın diye hafif üst üste biner
+    // Tırnak şekli: GENISLIK (X) tabandan uca azalır (sivrilir), KALINLIK (Z) sabit, 7 segment
+    private static final float KALINLIK = 0.85F;
+    private static final float[] GENISLIK = {1.25F, 1.15F, 1.00F, 0.85F, 0.65F, 0.45F, 0.25F};
+    private static final float SEGMENT_UZUNLUK = 0.40F; // daha kısa ve tok parmak/pençe boyu
+    private static final float ORTUSME = 0.08F;
 
-    // Kıvrım: KIVRIM[s] segment s'nin bir öncekine göre dönüşü (rad), uca doğru artar (parmak gibi kıvrılır).
-    private static final float[] KIVRIM = {0.0F, -0.10F, -0.14F, -0.18F, -0.22F, -0.26F, -0.30F};
+    // Kıvrım: pozitif değerler pençenin bize doğru (arkaya / avuç içine) kıvrılmasını sağlar
+    private static final float[] KIVRIM = {0.0F, 0.12F, 0.16F, 0.20F, 0.24F, 0.28F, 0.32F};
 
-    // Uçların KIVRILDIĞI yön (derece, kolun dikey ekseni etrafında):
-    //    0: ÖNE (oyuncunun önünde duran birine doğru), parmaklar gibi öne kıvrılır
-    //   90: vücuda doğru (içe), -90: dışa, 180: arkaya. Küçük değerler (ör. 20) hafif çapraz yapar.
-    private static final float KIVRILMA_YONU_DERECE = 0.0F;
-
-    // Başparmak pençesi: kolun DIŞ yanında, hafif aşağıda, dışa doğru yatık
-    private static final float BP_X = 2.1F;             // kolun merkezinden dışa uzaklık
-    private static final float BP_Y = -1.0F;            // elin alt kenarının 1 birim üstü
-    private static final float BP_Z = -1.2F;
-    private static final float BP_UZUNLUK = 0.70F;
-    private static final float BP_KALINLIK = 0.75F;
-    private static final float BP_GENISLIK = 0.80F;     // ana pençelerin genişliğiyle çarpılır
-    private static final float BP_ONE_EGIM = -0.25F;
-    private static final float BP_DISA_EGIM = 0.95F;    // dışa yatış (rad, ~54 derece)
+    // Başparmak: en iç tarafta, elin ucunda, diğer parmaklarla uyumlu hizada
+    private static final float BP_IC_X = 1.25F;         // elin iç tarafı
+    private static final float BP_Z = -0.35F;
+    private static final float BP_UZUNLUK = 0.80F;
+    private static final float BP_KALINLIK = 0.85F;
+    private static final float BP_GENISLIK = 0.90F;
+    private static final float BP_ARKAYA_EGIM = 0.10F;  // bize doğru eğim
+    private static final float BP_ICE_EGIM = 0.10F;     // hafif içe eğim
 
     public final ModelPart sagPence;
     public final ModelPart solPence;
@@ -77,7 +72,7 @@ public class LycanPencelerModel<T extends Entity> extends EntityModel<T> {
         elKur(root, "sag_pence", -KOL_MERKEZ_X, -1.0F);
         elKur(root, "sol_pence", KOL_MERKEZ_X, 1.0F);
 
-        // 256x256 PNG, 64x64 UV alanı: her UV birimi 4 piksel (küçük kutular için net, bulanık olmayan doku)
+        // 256x256 PNG, 64x64 UV alanı: her UV birimi 4 piksel
         return LayerDefinition.create(meshDefinition, 64, 64);
     }
 
@@ -86,17 +81,20 @@ public class LycanPencelerModel<T extends Entity> extends EntityModel<T> {
         PartDefinition grup = root.addOrReplaceChild(ad, CubeListBuilder.create(),
                 PartPose.offset(merkezX, EL_ALT_Y, 0.0F));
 
-        // Yön: 90 derecede sol kolda (disYon = +1) uçlar -X'e (vücuda), sağ kolda +X'e doğru kıvrılsın diye işaret kola göre değişir.
-        float yon = (float) Math.toRadians(KIVRILMA_YONU_DERECE) * disYon;
-        for (int i = 0; i < PENCE_X.length; i++) {
+        // 3 ana pençe (işaret, orta, dış parmak): elin ucundan parmak gibi çıkar, disYon ile tam ayna simetrisi
+        for (int i = 0; i < PENCE_DIS_X.length; i++) {
+            float posX = disYon * PENCE_DIS_X[i];
+            float rotZ = disYon * YAYILMA_DIS[i];
             bicakEkle(grup, "pence_" + i, i,
-                    PENCE_X[i], KOK_Y, ON_Z, BASLANGIC_EGIM, yon, YAYILMA[i],
+                    posX, KOK_Y, PENCE_Z[i], BASLANGIC_EGIM, 0.0F, rotZ,
                     UZUNLUK[i], KALINLIK, 1.0F);
         }
 
-        // Başparmak: dış yanda, dışa doğru yatık. Sol kolda dış = +X, o yüzden Z dönüşü işareti kola göre değişir.
-        bicakEkle(grup, "basparmak", PENCE_X.length,
-                disYon * BP_X, BP_Y, BP_Z, BP_ONE_EGIM, 0.0F, -disYon * BP_DISA_EGIM,
+        // Başparmak: elin iç tarafında (-disYon), elin tam ucunda, bize doğru kıvrık
+        float bpPosX = -disYon * BP_IC_X;
+        float bpRotZ = -disYon * BP_ICE_EGIM;
+        bicakEkle(grup, "basparmak", PENCE_DIS_X.length,
+                bpPosX, KOK_Y, BP_Z, BP_ARKAYA_EGIM, 0.0F, bpRotZ,
                 BP_UZUNLUK, BP_KALINLIK, BP_GENISLIK);
     }
 

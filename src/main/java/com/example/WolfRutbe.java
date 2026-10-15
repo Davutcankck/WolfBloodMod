@@ -8,9 +8,12 @@ public enum WolfRutbe {
 
     YAVRU(1, "Yavru", 0xFFA0A0A8),
     AVCI(3, "Avcı", 0xFF6FBF73),
-    AKINCI(5, "Akıncı", 0xFF4FA3E0),
-    ALFA(7, "Alfa", 0xFFD9A441),
-    KURT_EFENDISI(10, "Kurt Efendisi", 0xFFE04F4F);
+    AKINCI(6, "Akıncı", 0xFF4FA3E0),
+    GOLGE_AVCISI(10, "Gölge Avcısı", 0xFFBA55D3),
+    ALFA(15, "Alfa", 0xFFD9A441),
+    SURU_LIDERI(20, "Sürü Lideri", 0xFFE07030),
+    KURT_EFENDISI(25, "Kurt Efendisi", 0xFFE04F4F),
+    KADIM_KURT(30, "Kadim Kurt", 0xFFFF2222);
 
     private final int minSeviye;
     private final String ad;

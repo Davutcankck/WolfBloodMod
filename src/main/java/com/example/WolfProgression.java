@@ -77,6 +77,7 @@ public class WolfProgression {
         }
 
         data.unlockSkill(uuid, yetenek.getId());
+        WolfSkillPassives.uygulaBonuslar(player, data);
 
         player.serverLevel().playSound(null, player.blockPosition(),
                 SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.PLAYERS, 1.0f, 1.2f);

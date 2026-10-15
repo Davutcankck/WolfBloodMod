@@ -18,6 +18,8 @@ public class ExampleMod implements ModInitializer {
 	public void onInitialize() {
 		WolfItem.register();
 		WolfTransform.register();
+		WolfProgression.register();
+		WolfSkillPassives.register();
 		WolfEffects.register();
 
 		LOGGER.info("WOLF BLOOD modu yükleniyor...");
