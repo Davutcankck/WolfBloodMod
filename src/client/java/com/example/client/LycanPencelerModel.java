@@ -5,126 +5,131 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
-import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.world.entity.Entity;
 
-// WolfClaws.bbmodel'den (Blockbench, Modded Entity, flip_y) OTOMATIK üretildi, Mojmap'e çevrildi:
-//   pivot = (ox, 24 - oy, oz)      küp ofseti y = oy - to.y      dönüş açıları (-rx, ry, -rz) radyan
-//   Yarn -> Mojmap: ModelPartData -> PartDefinition, ModelPartBuilder -> CubeListBuilder,
-//   ModelTransform -> PartPose, Dilation -> CubeDeformation, TexturedModelData -> LayerDefinition
+// Kurt adam pençeleri: her elde 3 kavisli TIRNAK pençe (elin ön kenarında yan yana) + yanda yatık 1 başparmak pençesi.
 //
-// Model TEK bir el için çizildi (parmaklar + başparmak). Aynı model WerewolfClawsLayer içinde iki kola da
-// takılır; sağ kol için ayna çevrilir. Modelin hangi noktasına el takılacağı ve nasıl döndürüleceği
-// WerewolfClawsLayer'daki sabitlerle ayarlanır, bu dosyaya dokunmana gerek yok.
+// Her pençe, birbirinin ÇOCUĞU olan 7 segmentten oluşur: segmentler X'te geniş (tırnağın eni), Z'de ince (kalınlık);
+// en uca doğru daralır (sivrilir), her segment bir öncekine göre daha fazla döner (kıvrım). Dönüşler birikir,
+// pürüzsüz, parmak gibi kıvrılan bir tırnak çıkar. Boyutlar ondalık: kodda 1 piksel sınırı yok.
 //
-// Doku: textures/entity/lycan_pencesi.png (128x128 olabilir, UV alanı 16x16 birimdir)
+// Koordinatlar KOLUN kendi pivot'una (omuz) göre. Klasik kol kutusu y = -2 ... +10, yani elin alt kenarı y = 10.
+// Ön yüz -Z yönünde (kolun ön yüzü z = -2).
+//
+// sagPence / solPence PUBLIC: büyüme animasyonu için layer xScale/yScale/zScale ayarlıyor.
 public class LycanPencelerModel<T extends Entity> extends EntityModel<T> {
 
-    // Blockbench'teki doku UV alanı (Texture ayarlarındaki uv_width/uv_height). Doku kayık ya da
-    // gerilmiş görünürse bunları proje çözünürlüğü olan 18 yapmayı dene.
-    private static final int DOKU_UV_GENISLIK = 16;
-    private static final int DOKU_UV_YUKSEKLIK = 16;
+    // ============ AYARLAR (oyunda bakıp buradan oynayabilirsin) ============
 
-    public final ModelPart kok;
+    // Yerleşim
+    private static final float EL_ALT_Y = 10.0F;        // elin alt kenarı (kol pivot'una göre)
+    private static final float KOL_MERKEZ_X = 1.0F;     // klasik kol: ±1. Slim (Alex) kol için 0.5 yap
+    private static final float ON_Z = -1.0F;            // bıçak tabanının merkezi (taban z = -2...0 arası, elin ön yarısı)
+    private static final float KOK_Y = -0.8F;           // pençe tabanı elin biraz İÇİNDE başlar, birleşim görünmez
+
+    // 3 ana pençe: yatay konum, boy çarpanı, hafif açılma (Z dönüşü, rad)
+    private static final float[] PENCE_X = {-1.2F, 0.0F, 1.2F};
+    private static final float[] UZUNLUK = {0.90F, 1.00F, 0.90F};
+    private static final float[] YAYILMA = {0.06F, 0.0F, -0.06F};
+    private static final float BASLANGIC_EGIM = -0.08F; // tüm pençenin öne eğimi
+
+    // Tırnak şekli: GENISLIK (X, tırnağın eni) tabandan uca azalır (sivrilir), KALINLIK (Z) sabit, 7 segment
+    private static final float KALINLIK = 0.7F;
+    private static final float[] GENISLIK = {1.2F, 1.1F, 0.95F, 0.78F, 0.6F, 0.4F, 0.2F};
+    private static final float SEGMENT_UZUNLUK = 0.65F; // x 7 segment = pençenin toplam boyu (~4.5)
+    private static final float ORTUSME = 0.12F;         // segmentler birleşimde çentik kalmasın diye hafif üst üste biner
+
+    // Kıvrım: KIVRIM[s] segment s'nin bir öncekine göre dönüşü (rad), uca doğru artar (parmak gibi kıvrılır).
+    private static final float[] KIVRIM = {0.0F, -0.10F, -0.14F, -0.18F, -0.22F, -0.26F, -0.30F};
+
+    // Uçların KIVRILDIĞI yön (derece, kolun dikey ekseni etrafında):
+    //    0: ÖNE (oyuncunun önünde duran birine doğru), parmaklar gibi öne kıvrılır
+    //   90: vücuda doğru (içe), -90: dışa, 180: arkaya. Küçük değerler (ör. 20) hafif çapraz yapar.
+    private static final float KIVRILMA_YONU_DERECE = 0.0F;
+
+    // Başparmak pençesi: kolun DIŞ yanında, hafif aşağıda, dışa doğru yatık
+    private static final float BP_X = 2.1F;             // kolun merkezinden dışa uzaklık
+    private static final float BP_Y = -1.0F;            // elin alt kenarının 1 birim üstü
+    private static final float BP_Z = -1.2F;
+    private static final float BP_UZUNLUK = 0.70F;
+    private static final float BP_KALINLIK = 0.75F;
+    private static final float BP_GENISLIK = 0.80F;     // ana pençelerin genişliğiyle çarpılır
+    private static final float BP_ONE_EGIM = -0.25F;
+    private static final float BP_DISA_EGIM = 0.95F;    // dışa yatış (rad, ~54 derece)
+
+    public final ModelPart sagPence;
+    public final ModelPart solPence;
 
     public LycanPencelerModel(ModelPart root) {
-        this.kok = root.getChild("sag_kol_koku");
+        this.sagPence = root.getChild("sag_pence");
+        this.solPence = root.getChild("sol_pence");
     }
 
     public static LayerDefinition createBodyLayer() {
         MeshDefinition meshDefinition = new MeshDefinition();
         PartDefinition root = meshDefinition.getRoot();
 
-        PartDefinition g_sag_kol_koku = root.addOrReplaceChild("sag_kol_koku",
-                CubeListBuilder.create()
-                , PartPose.offset(0.0F, 24.0F, 0.0F));
+        // Klasik kolda sağ kol merkezi -X, sol kol +X tarafında. "disYon": kolun DIŞ tarafı (sağ kol -X, sol kol +X).
+        elKur(root, "sag_pence", -KOL_MERKEZ_X, -1.0F);
+        elKur(root, "sol_pence", KOL_MERKEZ_X, 1.0F);
 
-        PartDefinition g_parmak_merkez = g_sag_kol_koku.addOrReplaceChild("parmak_merkez",
-                CubeListBuilder.create()
-                        .texOffs(10, 2).addBox(0.5F, -12.2F, -4.6F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.1F))
-                , PartPose.offset(0.0F, 0.0F, 0.0F));
+        // 256x256 PNG, 64x64 UV alanı: her UV birimi 4 piksel (küçük kutular için net, bulanık olmayan doku)
+        return LayerDefinition.create(meshDefinition, 64, 64);
+    }
 
-        g_parmak_merkez.addOrReplaceChild("cube_r1", CubeListBuilder.create()
-                        .texOffs(0, 0).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)),
-                PartPose.offsetAndRotation(1.5F, -11.05F, -2.9F, -0.1309F, 0.0F, 0.0F));
+    private static void elKur(PartDefinition root, String ad, float merkezX, float disYon) {
+        // Grup: elin alt kenarının ortası. Büyüme animasyonunun ölçek merkezi de burası.
+        PartDefinition grup = root.addOrReplaceChild(ad, CubeListBuilder.create(),
+                PartPose.offset(merkezX, EL_ALT_Y, 0.0F));
 
-        g_parmak_merkez.addOrReplaceChild("cube_r2", CubeListBuilder.create()
-                        .texOffs(10, 4).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.2F)),
-                PartPose.offsetAndRotation(1.5F, -11.2F, -4.1F, 0.08727F, 0.0F, 0.0F));
+        // Yön: 90 derecede sol kolda (disYon = +1) uçlar -X'e (vücuda), sağ kolda +X'e doğru kıvrılsın diye işaret kola göre değişir.
+        float yon = (float) Math.toRadians(KIVRILMA_YONU_DERECE) * disYon;
+        for (int i = 0; i < PENCE_X.length; i++) {
+            bicakEkle(grup, "pence_" + i, i,
+                    PENCE_X[i], KOK_Y, ON_Z, BASLANGIC_EGIM, yon, YAYILMA[i],
+                    UZUNLUK[i], KALINLIK, 1.0F);
+        }
 
-        g_parmak_merkez.addOrReplaceChild("cube_r3", CubeListBuilder.create()
-                        .texOffs(10, 8).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.3F)),
-                PartPose.offsetAndRotation(1.5F, -11.2F, -4.5F, 0.08727F, 0.0F, 0.0F));
+        // Başparmak: dış yanda, dışa doğru yatık. Sol kolda dış = +X, o yüzden Z dönüşü işareti kola göre değişir.
+        bicakEkle(grup, "basparmak", PENCE_X.length,
+                disYon * BP_X, BP_Y, BP_Z, BP_ONE_EGIM, 0.0F, -disYon * BP_DISA_EGIM,
+                BP_UZUNLUK, BP_KALINLIK, BP_GENISLIK);
+    }
 
-        PartDefinition g_parmak_sol = g_sag_kol_koku.addOrReplaceChild("parmak_sol",
-                CubeListBuilder.create()
-                        .texOffs(6, 6).addBox(2.0F, -12.2F, -4.4F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.1F))
-                , PartPose.offset(0.0F, 0.0F, 0.0F));
+    // Tek bir kavisli tırnak pençe: segment zinciri, her segment bir öncekinin çocuğu, pivot'u kendi ÜST ucunda.
+    private static void bicakEkle(PartDefinition grup, String ad, int dokuSutunu,
+                                  float x, float y, float z, float egimX, float egimY, float egimZ,
+                                  float uzunlukCarpani, float kalinlik, float genislikCarpani) {
+        PartDefinition parca = grup.addOrReplaceChild(ad, CubeListBuilder.create(),
+                PartPose.offsetAndRotation(x, y, z, egimX, egimY, egimZ));
 
-        g_parmak_sol.addOrReplaceChild("cube_r4", CubeListBuilder.create()
-                        .texOffs(0, 6).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)),
-                PartPose.offsetAndRotation(0.1F, -11.05F, -2.8F, -0.1309F, 0.0F, 0.0F));
-
-        g_parmak_sol.addOrReplaceChild("cube_r5", CubeListBuilder.create()
-                        .texOffs(4, 10).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.2F)),
-                PartPose.offsetAndRotation(3.0F, -11.2F, -3.9F, 0.08727F, 0.0F, 0.0F));
-
-        g_parmak_sol.addOrReplaceChild("cube_r6", CubeListBuilder.create()
-                        .texOffs(8, 10).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.3F)),
-                PartPose.offsetAndRotation(3.0F, -11.2F, -4.3F, 0.08727F, 0.0F, 0.0F));
-
-        PartDefinition g_parmak_sag = g_sag_kol_koku.addOrReplaceChild("parmak_sag",
-                CubeListBuilder.create()
-                        .texOffs(0, 9).addBox(-0.9F, -12.2F, -4.4F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.1F))
-                , PartPose.offset(0.0F, 0.0F, 0.0F));
-
-        g_parmak_sag.addOrReplaceChild("cube_r7", CubeListBuilder.create()
-                        .texOffs(0, 3).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 2.0F, new CubeDeformation(0.0F)),
-                PartPose.offsetAndRotation(2.95F, -11.05F, -2.7F, -0.1309F, 0.0F, 0.0F));
-
-        g_parmak_sag.addOrReplaceChild("cube_r8", CubeListBuilder.create()
-                        .texOffs(0, 11).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.3F)),
-                PartPose.offsetAndRotation(0.1F, -11.2F, -4.3F, 0.08727F, 0.0F, 0.0F));
-
-        g_parmak_sag.addOrReplaceChild("cube_r9", CubeListBuilder.create()
-                        .texOffs(10, 6).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.2F)),
-                PartPose.offsetAndRotation(0.1F, -11.2F, -3.9F, 0.08727F, 0.0F, 0.0F));
-
-        PartDefinition g_basparmak = g_sag_kol_koku.addOrReplaceChild("basparmak",
-                CubeListBuilder.create()
-                , PartPose.offset(0.0F, 0.0F, 0.0F));
-
-        g_basparmak.addOrReplaceChild("cube_r10", CubeListBuilder.create()
-                        .texOffs(6, 0).addBox(-1.0F, -1.0F, -1.0F, 2.0F, 1.0F, 1.0F, new CubeDeformation(0.0F)),
-                PartPose.offsetAndRotation(-1.5F, -9.55F, -2.2F, -0.02287F, -0.87693F, -0.04273F));
-
-        g_basparmak.addOrReplaceChild("cube_r11", CubeListBuilder.create()
-                        .texOffs(6, 8).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.3F)),
-                PartPose.offsetAndRotation(-1.1F, -10.6F, -3.9F, -0.1645F, 0.07047F, -1.62418F));
-
-        g_basparmak.addOrReplaceChild("cube_r12", CubeListBuilder.create()
-                        .texOffs(6, 2).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.1F)),
-                PartPose.offsetAndRotation(-1.1F, -10.6F, -3.0F, -0.25177F, 0.07047F, -1.62418F));
-
-        g_basparmak.addOrReplaceChild("cube_r13", CubeListBuilder.create()
-                        .texOffs(6, 4).addBox(-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, 1.0F, new CubeDeformation(-0.2F)),
-                PartPose.offsetAndRotation(-1.1F, -10.6F, -3.5F, -0.1645F, 0.07047F, -1.62418F));
-
-        return LayerDefinition.create(meshDefinition, DOKU_UV_GENISLIK, DOKU_UV_YUKSEKLIK);
+        float segBoy = SEGMENT_UZUNLUK * uzunlukCarpani;
+        for (int s = 0; s < GENISLIK.length; s++) {
+            float g = GENISLIK[s] * genislikCarpani;
+            PartPose poz = (s == 0)
+                    ? PartPose.ZERO
+                    : PartPose.offsetAndRotation(0.0F, segBoy, 0.0F, KIVRIM[s], 0.0F, 0.0F);
+            // Doku: her pençenin kendi sütunu (14 birim), segment başına 3 satır
+            parca = parca.addOrReplaceChild("segment_" + s, CubeListBuilder.create()
+                            .texOffs(dokuSutunu * 14, s * 3)
+                            .addBox(-g / 2.0F, 0.0F, -kalinlik / 2.0F, g, segBoy + ORTUSME, kalinlik),
+                    poz);
+        }
     }
 
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        // İskelet animasyonu yok: büyüme (ölçek) WerewolfClawsLayer'da PoseStack ile uygulanıyor.
+        // İskelet animasyonu yok: pençeler kolla birlikte hareket eder, ölçek layer'da uygulanır.
     }
 
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay,
                                float red, float green, float blue, float alpha) {
-        kok.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+        sagPence.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
+        solPence.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
     }
 }
